@@ -1,7 +1,7 @@
 UPSTREAM = https://github.com/Polymer/polymer-gestures.git
 FORK = git@github.com:sbmaxx/polymer-gestures.git
 
-WHAT ?= upstream
+WHAT ?= fork
 BRANCH ?= master
 
 ifeq ($(WHAT),upstream)

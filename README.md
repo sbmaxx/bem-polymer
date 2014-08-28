@@ -6,7 +6,7 @@ Develop
 ===
 ```
 git clone git@github.com:sbmaxx/bem-polymer.git
-make install WHAT=fork
+make install
 make build
 ```
 
