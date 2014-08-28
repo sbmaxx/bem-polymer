@@ -26,4 +26,7 @@ clean:
 	rm -rf polymer-gestures
 	rm -rf tools
 
+server:
+	python -m SimpleHTTPServer
+
 .PHONY: install

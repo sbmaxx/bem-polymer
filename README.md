@@ -8,6 +8,7 @@ Develop
 git clone git@github.com:sbmaxx/bem-polymer.git
 make install
 make build
+make server
 ```
 
 Use
