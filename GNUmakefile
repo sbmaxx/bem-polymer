@@ -27,6 +27,7 @@ clean:
 	rm -rf tools
 
 server:
+	@echo open http://localhost:8000/polymer-gestures/samples/simple/index.html
 	python -m SimpleHTTPServer
 
 .PHONY: install
