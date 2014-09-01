@@ -12,19 +12,18 @@ BRANCH = integration
 endif
 
 install:
-	-git clone git@github.com:Polymer/tools.git
-	-git clone $(REPO)
-	cd polymer-gestures && git checkout $(BRANCH)
-	cd polymer-gestures && npm install
-	cd polymer-gestures && grunt
+	-git clone git@github.com:Polymer/tools.git libs/tools
+	-git clone $(REPO) libs/polymer-gestures
+	cd libs/polymer-gestures && git checkout $(BRANCH)
+	cd libs/polymer-gestures && npm install
+	cd libs/polymer-gestures && grunt
 
 build:
-	cd polymer-gestures && grunt
-	cp polymer-gestures/polymergestures.dev.js blocks.common/polymer-gestures/polymer-gestures.js
+	cd libs/polymer-gestures && grunt
+	cp libs/polymer-gestures/polymergestures.dev.js blocks.common/polymer-gestures/polymer-gestures.js
 
 clean:
-	rm -rf polymer-gestures
-	rm -rf tools
+	rm -rf libs
 
 server:
 	@echo open http://localhost:8000/polymer-gestures/samples/simple/index.html
