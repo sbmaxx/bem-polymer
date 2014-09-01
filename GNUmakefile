@@ -20,7 +20,7 @@ install:
 
 build:
 	cd libs/polymer-gestures && grunt
-	cp libs/polymer-gestures/polymergestures.dev.js blocks.common/polymer-gestures/polymer-gestures.js
+	cp libs/polymer-gestures/polymergestures.dev.js common.blocks/polymer-gestures/polymer-gestures.js
 
 clean:
 	rm -rf libs
