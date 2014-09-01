@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <title>bem-polymer testing ground</title>
+    <style>
+      body, html {
+        margin: 20px;
+      }
+      .logo {
+          cursor: pointer;
+          border: 3px dashed silver;
+          padding: 20px;
+      }
+      .animate {
+          -webkit-transition: all .5s;
+          transition: all .5s;
+      }
+    </style>
+    <script src="http://yastatic.net/jquery/2.1.1/jquery.min.js"></script>
+    <script src="../blocks.common/polymer-gestures/polymer-gestures.js"></script>
+    <script src="../blocks.common/polymer-gestures/_provider/polymer-gestures_provider_jquery.js"></script>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var log = document.querySelector('.log');
+            var element = document.querySelector('.logo');
+            var transform;
+            var updating = false;
+            resetElem();
+
+            $('.logo').on('track', function(e) {
+                if (e.ddx) {
+                    transform.x += e.ddx;
+                }
+                if (e.ddy) {
+                    transform.y += e.ddy;
+                }
+                reqUpdate();
+            });
+            $('.logo').on('pinch', function(e) {
+                transform.scale = e.scale;
+                reqUpdate();
+            });
+            $('.logo').on('rotate', function(e) {
+                transform.angle = e.angle;
+                reqUpdate();
+            })
+            PolymerGestures.addEventListener(element, 'trackend', function(e) {
+                resetElem();
+                reqUpdate();
+            });
+            function updateElem() {
+                var style = [
+                    'translate(' + transform.x + 'px, ' + transform.y + 'px)',
+                    'scale(' + transform.scale + ')',
+                    'rotate(' + transform.angle + 'deg)'
+                ].join(' ');
+                element.style.webkitTransform = style;
+                element.style.transform = style;
+                updating = false;
+            }
+            function resetElem() {
+                transform = {
+                    x: 0,
+                    y: 0,
+                    angle: 0,
+                    scale: 1
+                };
+                element.classList.add('animate');
+                // fast&dirty
+                setTimeout(function() {
+                    element.classList.remove('animate');
+                }, 500);
+            }
+            function reqUpdate() {
+                if (!updating) {
+                    updating = true;
+                    requestAnimationFrame(updateElem);
+                }
+            }
+            function debug(message) {
+                log.innerHTML = message + '<br>' + log.innerHTML;
+            }
+        });
+    </script>
+  </head>
+  <body touch-action="none">
+      <img class="logo" touch-action="none" src="http://bem.info/m/_/JtgGd5tEUsAhQKa4ki__sD4ZZ1M.svg" alt="bem logo" height="250">
+      <div class="log"></div>
+  </body>
+</html>
