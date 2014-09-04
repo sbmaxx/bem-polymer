@@ -12,15 +12,22 @@
           cursor: pointer;
           border: 3px dashed silver;
           padding: 20px;
+          height: 250px;
+          width: 292px;
+      }
+      .img {
+          background-image: url(//bem.info/m/_/JtgGd5tEUsAhQKa4ki__sD4ZZ1M.svg);
+          height: 250px;
+          width: 292px;
       }
       .animate {
           -webkit-transition: all .5s;
           transition: all .5s;
       }
     </style>
-    <script src="http://yastatic.net/jquery/2.1.1/jquery.min.js"></script>
-    <script src="../common.blocks/polymer-gestures/polymer-gestures.js"></script>
-    <script src="../common.blocks/polymer-gestures/_provider/polymer-gestures_provider_jquery.js"></script>
+    <script src="//yastatic.net/jquery/2.1.1/jquery.min.js"></script>
+    <script src="../blocks.common/polymer-gestures/polymer-gestures.js"></script>
+    <script src="../blocks.common/polymer-gestures/_provider/polymer-gestures_provider_jquery.js"></script>
     <script>
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -86,8 +93,8 @@
         });
     </script>
   </head>
-  <body touch-action="none">
-      <img class="logo" touch-action="none" src="http://bem.info/m/_/JtgGd5tEUsAhQKa4ki__sD4ZZ1M.svg" alt="bem logo" height="250">
+  <body>
+      <div class="logo" touch-action="none"><div class="img"></div></div>
       <div class="log"></div>
   </body>
 </html>
