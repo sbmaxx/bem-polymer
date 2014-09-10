@@ -98,7 +98,7 @@ window.PolymerGestures = {};
       return s;
     },
     findTarget: function(inEvent) {
-      if (HAS_FULL_PATH && inEvent.path) {
+      if (HAS_FULL_PATH && inEvent.path && inEvent.path.length) {
         return inEvent.path[0];
       }
       var x = inEvent.clientX, y = inEvent.clientY;
@@ -112,7 +112,7 @@ window.PolymerGestures = {};
     },
     findTouchAction: function(inEvent) {
       var n;
-      if (HAS_FULL_PATH && inEvent.path) {
+      if (HAS_FULL_PATH && inEvent.path && inEvent.path.length) {
         var path = inEvent.path;
         for (var i = 0; i < path.length; i++) {
           n = path[i];
@@ -188,6 +188,20 @@ window.PolymerGestures = {};
     insideNode: function(node, x, y) {
       var rect = node.getBoundingClientRect();
       return (rect.left <= x) && (x <= rect.right) && (rect.top <= y) && (y <= rect.bottom);
+    },
+    path: function(event) {
+      var p;
+      if (HAS_FULL_PATH && event.path.length) {
+        p = event.path;
+      } else {
+        p = [];
+        var n = this.findTarget(event);
+        while (n) {
+          p.push(n);
+          n = n.parentNode || n.host;
+        }
+      }
+      return p;
     }
   };
   scope.targetFinding = target;
@@ -561,6 +575,7 @@ window.PolymerGestures = {};
    *   - pointercancel: a pointer will no longer generate events
    */
   var dispatcher = {
+    IS_IOS: false,
     pointermap: new scope.PointerMap(),
     requiredGestures: new scope.PointerMap(),
     eventMap: Object.create(null),
@@ -640,6 +655,23 @@ window.PolymerGestures = {};
       this.fireEvent('up', inEvent);
       this.requiredGestures.delete(inEvent.pointerId);
     },
+    addGestureDependency: function(node, currentGestures) {
+      var gesturesWanted = node._pgEvents;
+      if (gesturesWanted) {
+        var gk = Object.keys(gesturesWanted);
+        for (var i = 0, r, ri, g; i < gk.length; i++) {
+          // gesture
+          g = gk[i];
+          if (gesturesWanted[g] > 0) {
+            // lookup gesture recognizer
+            r = this.dependencyMap[g];
+            // recognizer index
+            ri = r ? r.index : -1;
+            currentGestures[ri] = true;
+          }
+        }
+      }
+    },
     // LISTENER LOGIC
     eventHandler: function(inEvent) {
       // This is used to prevent multiple dispatch of events from
@@ -653,21 +685,15 @@ window.PolymerGestures = {};
         if (!inEvent._handledByPG) {
           currentGestures = {};
         }
-        // map gesture names to ordered set of recognizers
-        var gesturesWanted = inEvent.currentTarget._pgEvents;
-        if (gesturesWanted) {
-          var gk = Object.keys(gesturesWanted);
-          for (var i = 0, r, ri, g; i < gk.length; i++) {
-            // gesture
-            g = gk[i];
-            if (gesturesWanted[g] > 0) {
-              // lookup gesture recognizer
-              r = this.dependencyMap[g];
-              // recognizer index
-              ri = r ? r.index : -1;
-              currentGestures[ri] = true;
-            }
+        // in IOS mode, there is only a listener on the document, so this is not re-entrant
+        if (this.IS_IOS) {
+          var nodes = scope.targetFinding.path(inEvent);
+          for (var i = 0, n; i < nodes.length; i++) {
+            n = nodes[i];
+            this.addGestureDependency(n, currentGestures);
           }
+        } else {
+          this.addGestureDependency(inEvent.currentTarget, currentGestures);
         }
       }
 
@@ -933,6 +959,9 @@ window.PolymerGestures = {};
       dispatcher.listen(target, this.events);
     },
     unregister: function(target) {
+      if (target === document) {
+        return;
+      }
       dispatcher.unlisten(target, this.events);
     },
     lastTouches: [],
@@ -1022,6 +1051,7 @@ window.PolymerGestures = {};
 
   // handler block for native touch events
   var touchEvents = {
+    IS_IOS: false,
     events: [
       'touchstart',
       'touchmove',
@@ -1034,13 +1064,14 @@ window.PolymerGestures = {};
       'move'
     ],
     register: function(target, initial) {
-      if (initial) {
-        return;
+      if (this.IS_IOS ? initial : !initial) {
+        dispatcher.listen(target, this.events);
       }
-      dispatcher.listen(target, this.events);
     },
     unregister: function(target) {
-      dispatcher.unlisten(target, this.events);
+      if (!this.IS_IOS) {
+        dispatcher.unlisten(target, this.events);
+      }
     },
     scrollTypes: {
       EMITTER: 'none',
@@ -1325,6 +1356,9 @@ window.PolymerGestures = {};
       dispatcher.listen(target, this.events);
     },
     unregister: function(target) {
+      if (target === document) {
+        return;
+      }
       dispatcher.unlisten(target, this.events);
     },
     POINTER_TYPES: [
@@ -1398,6 +1432,9 @@ window.PolymerGestures = {};
       dispatcher.listen(target, this.events);
     },
     unregister: function(target) {
+      if (target === document) {
+        return;
+      }
       dispatcher.unlisten(target, this.events);
     },
     cleanup: function(id) {
@@ -1442,6 +1479,7 @@ window.PolymerGestures = {};
  * Included are touch events (v1), mouse events, and MSPointerEvents.
  */
 (function(scope) {
+
   var dispatcher = scope.dispatcher;
   var nav = window.navigator;
 
@@ -1453,20 +1491,15 @@ window.PolymerGestures = {};
     dispatcher.registerSource('mouse', scope.mouseEvents);
     if (window.ontouchstart !== undefined) {
       dispatcher.registerSource('touch', scope.touchEvents);
-      /*
-       * NOTE: an empty touch listener on body will reactivate nodes imported from templates with touch listeners
-       * Removing it will re-break the nodes
-       *
-       * Work around for https://bugs.webkit.org/show_bug.cgi?id=135628
-       */
-      var isSafari = nav.userAgent.match('Safari') && !nav.userAgent.match('Chrome');
-      if (isSafari) {
-        document.addEventListener('DOMContentLoaded', function(event) {
-          document.body.addEventListener('touchstart', function(){});
-        });
-      }
     }
   }
+
+  // Work around iOS bugs https://bugs.webkit.org/show_bug.cgi?id=135628 and https://bugs.webkit.org/show_bug.cgi?id=136506
+  var IS_IOS = navigator.userAgent.match('Safari') && !navigator.userAgent.match('Chrome') && 'ontouchstart' in window;
+
+  dispatcher.IS_IOS = IS_IOS;
+  scope.touchEvents.IS_IOS = IS_IOS;
+
   dispatcher.register(document, true);
 })(window.PolymerGestures);
 
