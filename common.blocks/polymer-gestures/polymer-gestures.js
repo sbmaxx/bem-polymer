@@ -122,8 +122,8 @@ window.PolymerGestures = {};
         }
       } else {
         n = inEvent.target;
-        while(n && typeof n.hasAttribute === 'function') {
-          if (n.hasAttribute('touch-action')) {
+        while(n) {
+          if (n.nodeType === Node.ELEMENT_NODE && n.hasAttribute('touch-action')) {
             return n.getAttribute('touch-action');
           }
           n = n.parentNode || n.host;
@@ -191,7 +191,7 @@ window.PolymerGestures = {};
     },
     path: function(event) {
       var p;
-      if (HAS_FULL_PATH && event.path.length) {
+      if (HAS_FULL_PATH && event.path && event.path.length) {
         p = event.path;
       } else {
         p = [];
@@ -687,7 +687,12 @@ window.PolymerGestures = {};
         }
         // in IOS mode, there is only a listener on the document, so this is not re-entrant
         if (this.IS_IOS) {
-          var nodes = scope.targetFinding.path(inEvent);
+          var ev = inEvent;
+          if (type === 'touchstart') {
+            var ct = inEvent.changedTouches[0];
+            ev = {target: inEvent.target, clientX: ct.clientX, clientY: ct.clientY};
+          }
+          var nodes = scope.targetFinding.path(ev);
           for (var i = 0, n; i < nodes.length; i++) {
             n = nodes[i];
             this.addGestureDependency(n, currentGestures);
@@ -794,13 +799,15 @@ window.PolymerGestures = {};
       for (var i = 0, e, rg; i < this.gestureQueue.length; i++) {
         e = this.gestureQueue[i];
         rg = e._requiredGestures;
-        for (var j = 0, g, fn; j < this.gestures.length; j++) {
-          // only run recognizer if an element in the source event's path is listening for those gestures
-          if (rg[j]) {
-            g = this.gestures[j];
-            fn = g[e.type];
-            if (fn) {
-              fn.call(g, e);
+        if (rg) {
+          for (var j = 0, g, fn; j < this.gestures.length; j++) {
+            // only run recognizer if an element in the source event's path is listening for those gestures
+            if (rg[j]) {
+              g = this.gestures[j];
+              fn = g[e.type];
+              if (fn) {
+                fn.call(g, e);
+              }
             }
           }
         }
@@ -936,6 +943,7 @@ window.PolymerGestures = {};
 
   var WHICH_TO_BUTTONS = [0, 1, 4, 2];
 
+  var CURRENT_BUTTONS = 0;
   var HAS_BUTTONS = false;
   try {
     HAS_BUTTONS = new MouseEvent('test', {buttons: 1}).buttons === 1;
@@ -984,18 +992,20 @@ window.PolymerGestures = {};
       e.pointerType = this.POINTER_TYPE;
       e._source = 'mouse';
       if (!HAS_BUTTONS) {
-        e.buttons = WHICH_TO_BUTTONS[e.which] || 0;
+        var type = inEvent.type;
+        var bit = WHICH_TO_BUTTONS[inEvent.which] || 0;
+        if (type === 'mousedown') {
+          CURRENT_BUTTONS |= bit;
+        } else if (type === 'mouseup') {
+          CURRENT_BUTTONS &= ~bit;
+        }
+        e.buttons = CURRENT_BUTTONS;
       }
       return e;
     },
     mousedown: function(inEvent) {
       if (!this.isEventSimulatedFromTouch(inEvent)) {
         var p = pointermap.has(this.POINTER_ID);
-        // TODO(dfreedman) workaround for some elements not sending mouseup
-        // http://crbug/149091
-        if (p) {
-          this.mouseup(inEvent);
-        }
         var e = this.prepareEvent(inEvent);
         e.target = scope.findTarget(inEvent);
         pointermap.set(this.POINTER_ID, e.target);
@@ -1009,9 +1019,12 @@ window.PolymerGestures = {};
           var e = this.prepareEvent(inEvent);
           e.target = target;
           // handle case where we missed a mouseup
-          if (e.buttons === 0) {
+          if ((HAS_BUTTONS ? e.buttons : e.which) === 0) {
+            if (!HAS_BUTTONS) {
+              CURRENT_BUTTONS = e.buttons = 0;
+            }
             dispatcher.cancel(e);
-            this.cleanupMouse();
+            this.cleanupMouse(e.buttons);
           } else {
             dispatcher.move(e);
           }
@@ -1024,11 +1037,13 @@ window.PolymerGestures = {};
         e.relatedTarget = scope.findTarget(inEvent);
         e.target = pointermap.get(this.POINTER_ID);
         dispatcher.up(e);
-        this.cleanupMouse();
+        this.cleanupMouse(e.buttons);
       }
     },
-    cleanupMouse: function() {
-      pointermap['delete'](this.POINTER_ID);
+    cleanupMouse: function(buttons) {
+      if (buttons === 0) {
+        pointermap.delete(this.POINTER_ID);
+      }
     }
   };
 
@@ -1495,7 +1510,8 @@ window.PolymerGestures = {};
   }
 
   // Work around iOS bugs https://bugs.webkit.org/show_bug.cgi?id=135628 and https://bugs.webkit.org/show_bug.cgi?id=136506
-  var IS_IOS = navigator.userAgent.match('Safari') && !navigator.userAgent.match('Chrome') && 'ontouchstart' in window;
+  var ua = navigator.userAgent;
+  var IS_IOS = ua.match(/iPad|iPhone|iPod/) && 'ontouchstart' in window;
 
   dispatcher.IS_IOS = IS_IOS;
   scope.touchEvents.IS_IOS = IS_IOS;
@@ -1898,11 +1914,12 @@ window.PolymerGestures = {};
       }
     },
     shouldTap: function(e, downState) {
+      var tap = true;
       if (e.pointerType === 'mouse') {
         // only allow left click to tap for mouse
-        return downState.buttons === 1;
+        tap = (e.buttons ^ 1) && (downState.buttons & 1);
       }
-      return !e.tapPrevented;
+      return tap && !e.tapPrevented;
     },
     up: function(inEvent) {
       var start = pointermap.get(inEvent.pointerId);
@@ -1940,6 +1957,52 @@ window.PolymerGestures = {};
   dispatcher.registerGesture('tap', tap);
 })(window.PolymerGestures);
 
+/*
+ * Basic strategy: find the farthest apart points, use as diameter of circle
+ * react to size change and rotation of the chord
+ */
+
+/**
+ * @module pointer-gestures
+ * @submodule Events
+ * @class pinch
+ */
+/**
+ * Scale of the pinch zoom gesture
+ * @property scale
+ * @type Number
+ */
+/**
+ * Center X position of pointers causing pinch
+ * @property centerX
+ * @type Number
+ */
+/**
+ * Center Y position of pointers causing pinch
+ * @property centerY
+ * @type Number
+ */
+
+/**
+ * @module pointer-gestures
+ * @submodule Events
+ * @class rotate
+ */
+/**
+ * Angle (in degrees) of rotation. Measured from starting positions of pointers.
+ * @property angle
+ * @type Number
+ */
+/**
+ * Center X position of pointers causing rotation
+ * @property centerX
+ * @type Number
+ */
+/**
+ * Center Y position of pointers causing rotation
+ * @property centerY
+ * @type Number
+ */
 (function(scope) {
   var dispatcher = scope.dispatcher;
   var eventFactory = scope.eventFactory;
@@ -1956,6 +2019,10 @@ window.PolymerGestures = {};
       'pinch',
       'rotate'
     ],
+    defaultActions: {
+      'pinch': 'none',
+      'rotate': 'none'
+    },
     reference: {},
     down: function(inEvent) {
       pointermap.set(inEvent.pointerId, inEvent);
@@ -1986,21 +2053,27 @@ window.PolymerGestures = {};
     cancel: function(inEvent) {
         this.up(inEvent);
     },
-    dispatchPinch: function(diameter, points) {
+    firePinch: function(diameter, points) {
       var zoom = diameter / this.reference.diameter;
       var e = eventFactory.makeGestureEvent('pinch', {
+        bubbles: true,
+        cancelable: true,
         scale: zoom,
         centerX: points.center.x,
-        centerY: points.center.y
+        centerY: points.center.y,
+        _source: 'pinch'
       });
       this.reference.target.dispatchEvent(e);
     },
-    dispatchRotate: function(angle, points) {
+    fireRotate: function(angle, points) {
       var diff = Math.round((angle - this.reference.angle) % 360);
       var e = eventFactory.makeGestureEvent('rotate', {
+        bubbles: true,
+        cancelable: true,
         angle: diff,
         centerX: points.center.x,
-        centerY: points.center.y
+        centerY: points.center.y,
+        _source: 'pinch'
       });
       this.reference.target.dispatchEvent(e);
     },
@@ -2009,10 +2082,10 @@ window.PolymerGestures = {};
       var diameter = points.diameter;
       var angle = this.calcAngle(points);
       if (diameter != this.reference.diameter) {
-        this.dispatchPinch(diameter, points);
+        this.firePinch(diameter, points);
       }
       if (angle != this.reference.angle) {
-        this.dispatchRotate(angle, points);
+        this.fireRotate(angle, points);
       }
     },
     calcChord: function() {
