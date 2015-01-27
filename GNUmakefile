@@ -31,7 +31,7 @@ clean:
 	rm -rf libs
 
 server:
-	@echo open http://localhost:8000/polymer-gestures/samples/simple/index.html
+	@echo open http://localhost:8000/demo/index.html
 	python -m SimpleHTTPServer
 
 .PHONY: install build clean server update

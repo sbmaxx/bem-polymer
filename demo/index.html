@@ -16,7 +16,7 @@
           width: 292px;
       }
       .img {
-          background-image: url(//bem.info/m/_/JtgGd5tEUsAhQKa4ki__sD4ZZ1M.svg);
+          background-image: url(//bem.info/m/_/lHGkpIFauDlxw9MGg869APxKdkc.svg);
           height: 250px;
           width: 292px;
       }
@@ -26,18 +26,19 @@
       }
     </style>
     <script src="//yastatic.net/jquery/2.1.1/jquery.min.js"></script>
-    <script src="../blocks.common/polymer-gestures/polymer-gestures.js"></script>
-    <script src="../blocks.common/polymer-gestures/_provider/polymer-gestures_provider_jquery.js"></script>
+    <script src="../common.blocks/polymer-gestures/polymer-gestures.js"></script>
+    <script src="../common.blocks/polymer-gestures/_provider/polymer-gestures_provider_jquery.js"></script>
     <script>
 
         document.addEventListener('DOMContentLoaded', function() {
-            var log = document.querySelector('.log');
+            var debug = document.querySelector('.debug');
             var element = document.querySelector('.logo');
             var transform;
             var updating = false;
             resetElem();
 
             $('.logo').on('track', function(e) {
+                console.log(e);
                 if (e.ddx) {
                     transform.x += e.ddx;
                 }
@@ -54,7 +55,7 @@
                 transform.angle = e.angle;
                 reqUpdate();
             })
-            PolymerGestures.addEventListener(element, 'trackend', function(e) {
+            $('.logo').on('trackend', function(e) {
                 resetElem();
                 reqUpdate();
             });
@@ -88,13 +89,13 @@
                 }
             }
             function debug(message) {
-                log.innerHTML = message + '<br>' + log.innerHTML;
+                debug.innerHTML = message + '<br>' + log.innerHTML;
             }
         });
     </script>
   </head>
   <body>
       <div class="logo" touch-action="none"><div class="img"></div></div>
-      <div class="log"></div>
+      <div class="debug"></div>
   </body>
 </html>

@@ -1,18 +1,19 @@
 (function($, polymer) {
-    var handler = (function() {
-        return parseFloat($.fn.jquery) < 1.9 ? function() {
-            $.event.handle.apply( this, arguments );
-        } : function(e) {
-            $.event.trigger.call(this, e, {}, this, true);
-        }
-    }());
-    ['track', 'pinch', 'rotate'].forEach(function(event) {
+    $.event.fixHooks.track = {
+        // дополнительные свойства, которые необходимо прокинуть в jquery event
+        // остальные всегда доступны из event.originalEvent.*
+        props: [ 'ddx', 'ddy' ]
+    };
+    ['track', 'pinch', 'rotate', 'trackend', 'pinchstart', 'pinchend'].forEach(function(event) {
         $.event.special[event] = {
             add: function() {
-                polymer.addEventListener(this, event, handler);
+                // нет нужды вызывать какой-либоу callback здесь
+                // т.к. внутри полимера происходит this.dispatchEvent
+                // и это событие обрабатывается jQuery
+                polymer.addEventListener(this, event, $.noop);
             },
             remove: function() {
-                polymer.removeEventListener(this, event, handler);
+                polymer.removeEventListener(this, event, $.noop);
             }
         }
     });
