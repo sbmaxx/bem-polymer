@@ -18,6 +18,11 @@ install:
 	cd libs/polymer-gestures && npm install
 	cd libs/polymer-gestures && grunt
 
+update:: clean
+
+update:: install
+	@echo "done"
+
 build:
 	cd libs/polymer-gestures && grunt
 	cp libs/polymer-gestures/polymergestures.dev.js common.blocks/polymer-gestures/polymer-gestures.js
@@ -29,4 +34,4 @@ server:
 	@echo open http://localhost:8000/polymer-gestures/samples/simple/index.html
 	python -m SimpleHTTPServer
 
-.PHONY: install
+.PHONY: install build clean server update
