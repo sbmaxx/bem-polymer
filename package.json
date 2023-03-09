@@ -1,0 +1,19 @@
+{
+  "name": "bem-polymer",
+  "version": "1.0.0",
+  "description": "bem-polymer =========== Just builded `polymer-gestures` library in BEM filesystem.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sbmaxx/bem-polymer.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sbmaxx/bem-polymer/issues"
+  },
+  "homepage": "https://github.com/sbmaxx/bem-polymer#readme"
+}
